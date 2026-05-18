@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AI News Collector Dashboard</title>
+    <title>AI Opportunity Radar</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}" />
   </head>
   <body>
@@ -12,13 +12,13 @@
         <nav class="topbar" aria-label="Primary navigation">
           <a class="brand" href="/">
             <span class="brand-mark" aria-hidden="true">AI</span>
-            <span>AI News Collector</span>
+            <span>AI Opportunity Radar</span>
           </a>
           <div class="nav-links">
             <a href="/docs">Docs</a>
             <a href="/health">Health</a>
             <a href="/top5">Top 5</a>
-            <a href="/dashboard">API Dashboard</a>
+            <a href="/dashboard">Dashboard</a>
           </div>
         </nav>
 
@@ -28,16 +28,15 @@
               <span class="status-dot" aria-hidden="true"></span>
               <span>Service Status: {{ service_status }}</span>
             </div>
-            <h1 id="page-title">AI News Collector Dashboard</h1>
+            <h1 id="page-title">AI Opportunity Radar</h1>
             <p>
-              A live command center for ranked AI news, opportunity signals,
-              trending topics, and operational API status.
+              Get only the most important AI updates worth your attention.
+              Track tools, open source momentum, startup opportunities, and practical actions.
             </p>
             <div class="action-row" aria-label="Quick actions">
-              <a class="button primary" href="/docs">API Docs</a>
+              <a class="button primary" href="/dashboard">Open Dashboard</a>
+              <a class="button" href="/docs">API Docs</a>
               <a class="button" href="/health">Health Check</a>
-              <a class="button" href="/top5">Top News</a>
-              <a class="button" href="/dashboard">Dashboard API</a>
             </div>
           </div>
 
@@ -69,9 +68,9 @@
 
       <section class="metrics-grid" aria-label="Quick stats">
         <article class="metric-card">
-          <span>Total News Count</span>
+          <span>Top 5 AI Updates</span>
           <strong data-total-news>{{ total_news_count }}</strong>
-          <p>Collected stories available to the ranking pipeline.</p>
+          <p>The highest-signal updates ranked for immediate attention.</p>
         </article>
         <article class="metric-card">
           <span>Trending Topics</span>
@@ -79,21 +78,21 @@
           <p>Active grouped topics currently surfaced by the API.</p>
         </article>
         <article class="metric-card">
-          <span>API Health</span>
-          <strong data-api-health>{{ api_health }}</strong>
-          <p>Health endpoint and dashboard data readiness.</p>
+          <span>AI Tool Trends</span>
+          <strong class="compact">Tools, agents, infra</strong>
+          <p>Emerging products and developer shifts worth tracking.</p>
         </article>
         <article class="metric-card">
-          <span>Last Update Time</span>
+          <span>Latest Important Updates</span>
           <strong class="compact" data-last-update>{{ last_update_time.strftime("%Y-%m-%d %H:%M UTC") }}</strong>
-          <p>Most recent signal or raw news timestamp.</p>
+          <p>Fresh signals, with fallback data while the database wakes up.</p>
         </article>
       </section>
 
       <section class="content-grid">
         <article class="section-panel wide">
           <div class="section-heading">
-            <h2>Top 5 AI News</h2>
+            <h2>Top 5 AI Updates Today</h2>
             <a href="/top5">View JSON</a>
           </div>
           <div class="news-list" data-top-news-list>
@@ -109,8 +108,8 @@
             {% endfor %}
           </div>
           <div class="empty-state" data-top-news-empty {% if top_news %}hidden{% endif %}>
-            <strong>No ranked news yet</strong>
-            <p>Run the update pipeline, then refresh this page to see the top AI stories.</p>
+            <strong>Loading important updates</strong>
+            <p>The Radar will show fallback signals if live data is unavailable.</p>
           </div>
         </article>
 
@@ -135,7 +134,7 @@
 
         <article class="section-panel">
           <div class="section-heading">
-            <h2>Top Endpoints</h2>
+            <h2>Open Source AI</h2>
             <a href="/docs">Swagger</a>
           </div>
           <div class="endpoint-list">
@@ -153,7 +152,7 @@
 
         <article class="section-panel">
           <div class="section-heading">
-            <h2>API Status</h2>
+            <h2>Why This Matters</h2>
             <a href="/health">Health JSON</a>
           </div>
           <div class="api-summary">
@@ -161,7 +160,7 @@
               <span class="status-dot" aria-hidden="true"></span>
               <strong data-service-status>{{ service_status }}</strong>
             </div>
-            <p data-api-summary>{{ service_name }} is serving the dashboard, API routes, and Swagger documentation.</p>
+            <p data-api-summary>{{ service_name }} turns noisy AI feeds into ranked decisions: what happened, why it matters, why you should care, and what to do next.</p>
           </div>
         </article>
 

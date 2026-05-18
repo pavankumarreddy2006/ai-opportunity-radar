@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 from app.api.router import api_router
 from app.core.logging import configure_logging, get_logger
 from app.core.settings import get_settings
+from app.db import base as _models  # noqa: F401 - register SQLAlchemy model relationships before queries run.
 
 configure_logging()
 logger = get_logger(__name__)
@@ -47,7 +48,7 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 def _build_dashboard_context() -> dict:
     now = datetime.now(timezone.utc)
     return {
-        "service_name": "AI News Collector API",
+        "service_name": "AI Opportunity Radar API",
         "service_status": "ONLINE",
         "api_health": "Checking",
         "total_news_count": "Loading",
@@ -56,8 +57,8 @@ def _build_dashboard_context() -> dict:
         "top_news": [],
         "trending_topics": [],
         "latest_updates": [
-            "Root dashboard is live with Jinja2 templates.",
-            "API routes remain available for automation and integrations.",
+            "Hourly refresh is configured through Render cron.",
+            "API routes include resilient fallback data if the database is empty or waking.",
             "Swagger documentation is available at /docs.",
         ],
         "endpoints": [

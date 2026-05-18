@@ -20,7 +20,7 @@ def test_root_endpoint() -> None:
 
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "AI News Collector Dashboard" in response.text
+    assert "AI Opportunity Radar" in response.text
     assert "/docs" in response.text
     assert "/health" in response.text
 
@@ -32,6 +32,14 @@ def test_required_news_endpoints_are_registered() -> None:
     assert "/top5" in paths
     assert "/trending" in paths
     assert "/update-news" in paths
+
+
+def test_required_news_endpoints_return_fallback_payloads() -> None:
+    for path in ["/news", "/top5", "/trending", "/dashboard", "/weekly-report"]:
+        response = client.get(path)
+
+        assert response.status_code == 200
+        assert response.json()
 
 
 def test_auth_token_round_trip() -> None:

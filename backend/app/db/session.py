@@ -11,7 +11,19 @@ class Base(DeclarativeBase):
 
 
 settings = get_settings()
-engine = create_engine(settings.sqlalchemy_database_url, future=True, pool_pre_ping=True)
+
+engine_kwargs = {"future": True, "pool_pre_ping": True}
+if settings.sqlalchemy_database_url.startswith("postgresql"):
+    engine_kwargs.update(
+        {
+            "pool_size": 5,
+            "max_overflow": 10,
+            "pool_recycle": 1800,
+            "connect_args": {"connect_timeout": 1},
+        }
+    )
+
+engine = create_engine(settings.sqlalchemy_database_url, **engine_kwargs)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
 

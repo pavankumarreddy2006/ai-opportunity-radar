@@ -11,4 +11,4 @@ class HealthResponse(BaseModel):
     status: str
     environment: str
     timestamp: datetime
-
+    database: str = "unknown"

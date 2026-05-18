@@ -21,19 +21,19 @@ export default async function HomePage() {
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 lg:px-12">
       <div className="mx-auto max-w-7xl">
-        <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-panel px-6 py-8 md:px-10 md:py-12">
+        <section className="relative overflow-hidden rounded-lg border border-white/10 bg-panel px-6 py-8 md:px-10 md:py-12">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(121,226,160,0.18),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(244,201,109,0.14),transparent_26%)]" />
           <div className="relative grid gap-8 lg:grid-cols-[1.4fr_0.8fr]">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-4 py-2 text-sm text-accent">
                 <Compass className="h-4 w-4" />
-                AI news intelligence
+                AI opportunity intelligence
               </div>
               <h1 className="mt-6 max-w-3xl text-4xl font-semibold leading-tight text-text md:text-6xl">
-                The top AI updates you should care about today.
+                AI Opportunity Radar
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-muted md:text-lg">
-                AI News Collector scans communities, open source launches, research streams, blogs, and video feeds, then cuts the noise into a ranked action list.
+                Get only the most important AI updates worth your attention.
               </p>
               <div className="mt-8 grid gap-4 sm:grid-cols-3">
                 <MetricCard icon={<BrainCircuit className="h-5 w-5" />} label="AI-ranked" value="1-hour refresh" />
@@ -41,7 +41,7 @@ export default async function HomePage() {
                 <MetricCard icon={<BarChart3 className="h-5 w-5" />} label="Opportunity" value="Actionable scores" />
               </div>
             </div>
-            <div className="rounded-[1.75rem] border border-white/10 bg-ink/50 p-5 backdrop-blur">
+            <div className="rounded-lg border border-white/10 bg-ink/50 p-5 backdrop-blur">
               <p className="text-sm uppercase tracking-[0.25em] text-muted">Current Focus</p>
               <div className="mt-4 flex flex-wrap gap-3">
                 {preferenceNames.map((interest) => (
@@ -52,7 +52,7 @@ export default async function HomePage() {
               </div>
               <div className="mt-6 space-y-3">
                 {signals.slice(0, 3).map((signal, index) => (
-                  <div key={signal.id} className="rounded-2xl border border-white/5 bg-panelSoft px-4 py-3">
+                  <div key={signal.id} className="rounded-lg border border-white/5 bg-panelSoft px-4 py-3">
                     <p className="text-xs uppercase tracking-[0.2em] text-muted">Priority {index + 1}</p>
                     <p className="mt-2 text-sm font-medium text-text">{signal.summary?.headline ?? signal.raw_title}</p>
                   </div>
@@ -72,7 +72,7 @@ export default async function HomePage() {
           </SectionShell>
 
           <SectionShell title="Weekly Digest" subtitle={weeklyReport.executive_summary}>
-            <div className="rounded-lg border border-line bg-panelSoft p-5">
+              <div className="rounded-lg border border-line bg-panelSoft p-5">
               <div className="flex items-start gap-3">
                 <CalendarDays className="mt-1 h-5 w-5 text-accentWarm" />
                 <div>
@@ -114,7 +114,7 @@ export default async function HomePage() {
 
 function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+    <div className="rounded-lg border border-white/10 bg-white/5 p-4">
       <div className="flex items-center gap-3 text-accent">
         {icon}
         <span className="text-sm text-muted">{label}</span>
@@ -135,7 +135,7 @@ function EmptyState({ section }: { section: string }) {
     );
 
   return (
-    <div className="rounded-3xl border border-dashed border-line bg-panelSoft/70 p-8 text-center">
+    <div className="rounded-lg border border-dashed border-line bg-panelSoft/70 p-8 text-center">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/5 text-accent">{icon}</div>
       <p className="mt-4 text-base font-medium text-text">No fresh signals here yet.</p>
       <p className="mt-2 text-sm text-muted">Run the hourly refresh or broaden your sources to populate {section.toLowerCase()}.</p>

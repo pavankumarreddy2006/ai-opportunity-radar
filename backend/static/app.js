@@ -100,7 +100,7 @@ const hydrateDashboard = async () => {
     const health = await fetchJson("/health");
     text("[data-api-health]", "Healthy");
     text("[data-service-status]", health.status === "ok" ? "ONLINE" : "DEGRADED");
-    text("[data-api-summary]", `AI News Collector API is healthy in ${health.environment} mode.`);
+    text("[data-api-summary]", `AI Opportunity Radar API is healthy in ${health.environment} mode.`);
   } catch {
     text("[data-api-health]", "Degraded");
     text("[data-service-status]", "DEGRADED");
@@ -114,7 +114,7 @@ const hydrateDashboard = async () => {
     text("[data-last-update]", formatDate(topNews[0]?.created_at));
   } catch {
     text("[data-total-news]", "Unavailable");
-    showEmpty("[data-top-news-empty]", "Top news unavailable", "The /top5 endpoint did not return data.");
+    showEmpty("[data-top-news-empty]", "Showing fallback signals", "The live /top5 endpoint did not return data yet.");
   }
 
   try {
@@ -123,7 +123,7 @@ const hydrateDashboard = async () => {
     text("[data-trending-count]", String(trending.length));
   } catch {
     text("[data-trending-count]", "Unavailable");
-    showEmpty("[data-topic-empty]", "Trends unavailable", "The /trending endpoint did not return data.");
+    showEmpty("[data-topic-empty]", "Showing fallback trends", "The live /trending endpoint did not return data yet.");
   }
 };
 

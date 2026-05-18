@@ -5,7 +5,7 @@ import { Signal } from "@/lib/types";
 
 export function SignalCard({ signal, compact = false }: { signal: Signal; compact?: boolean }) {
   return (
-    <article className="group rounded-3xl border border-line bg-panelSoft p-5 transition hover:border-accent/40 hover:bg-panel">
+    <article className="group rounded-lg border border-line bg-panelSoft p-5 transition hover:border-accent/40 hover:bg-panel">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           <Badge>{signal.source}</Badge>
@@ -25,7 +25,7 @@ export function SignalCard({ signal, compact = false }: { signal: Signal; compac
             <p className="text-xs uppercase tracking-[0.2em] text-muted">Why you should care</p>
             <p className="mt-2 text-sm leading-6 text-text/95">{signal.summary?.why_you_should_care}</p>
           </div>
-          <div className="mt-4 rounded-2xl border border-white/5 bg-ink/40 p-4">
+          <div className="mt-4 rounded-lg border border-white/5 bg-ink/40 p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-muted">Action</p>
             <p className="mt-2 text-sm text-text/95">{signal.summary?.action_recommendation ?? signal.action_recommendation}</p>
           </div>

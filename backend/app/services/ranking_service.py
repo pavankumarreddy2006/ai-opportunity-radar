@@ -99,7 +99,7 @@ class RankingService:
                 engagement_score=engagement_score,
                 ranking_factors=ranking_factors,
                 expires_at=utc_now() + timedelta(days=2),
-                action_recommendation="Review this signal and decide whether to read, save, or act today.",
+                action_recommendation=self._action_recommendation(signal_type, score, raw.source),
             )
             db.add(signal)
             db.add(
@@ -160,6 +160,26 @@ class RankingService:
                 best_overlap = overlap
                 best_type = signal_type
         return best_type
+
+    def _action_recommendation(self, signal_type: str, score: int, source: str) -> str:
+        if score >= 85:
+            urgency = "Act today"
+        elif score >= 70:
+            urgency = "Review this week"
+        else:
+            urgency = "Monitor"
+
+        actions = {
+            "AI Agents": "prototype one narrow workflow or add it to your automation backlog",
+            "Open Source AI": "inspect the repo, issues, adoption signals, and integration gaps",
+            "Developer Tools": "test whether this improves your build, deploy, or coding loop",
+            "AI Infrastructure": "compare it against your current inference, eval, or data stack",
+            "Research Breakthroughs": "read the technical details and look for productizable constraints",
+            "Startup and Funding": "validate buyer pain with customer conversations before building",
+            "Policy and Safety": "check compliance exposure and update your watchlist",
+        }
+        next_step = actions.get(signal_type, "open the source and decide whether it changes your roadmap")
+        return f"{urgency}: {next_step}. Source: {source}."
 
     @staticmethod
     def top_signals(db: Session, user_id: int | None = None, limit: int = 5) -> list[Signal]:

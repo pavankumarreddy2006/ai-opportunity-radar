@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.core.logging import get_logger
 from app.db.session import get_db
 from app.schemas.signal import SignalResponse, TrendingGroup
+from app.services.fallback_data import fallback_trending
 from app.services.ranking_service import RankingService
 
 router = APIRouter()
+logger = get_logger(__name__)
 
 
 def _to_signal_response(signal) -> SignalResponse:
@@ -27,6 +30,15 @@ def _to_signal_response(signal) -> SignalResponse:
 
 @router.get("", response_model=list[TrendingGroup])
 def get_trending(db: Session = Depends(get_db)) -> list[TrendingGroup]:
-    grouped = RankingService.grouped_trending(db)
-    return [TrendingGroup(section=section, signals=[_to_signal_response(signal) for signal in signals]) for section, signals in grouped.items()]
-
+    try:
+        grouped = RankingService.grouped_trending(db)
+        response = [
+            TrendingGroup(section=section, signals=[_to_signal_response(signal) for signal in signals])
+            for section, signals in grouped.items()
+        ]
+        if not response or not any(group.signals for group in response):
+            return fallback_trending()
+        return response
+    except Exception as exc:
+        logger.exception("Failed to load trending groups; returning fallback groups: %s", exc)
+        return fallback_trending()
