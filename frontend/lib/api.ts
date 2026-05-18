@@ -5,20 +5,27 @@ const rawApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:
 const API_BASE_URL = rawApiBaseUrl.startsWith("http") ? rawApiBaseUrl : `https://${rawApiBaseUrl}`;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-    next: { revalidate: 3600 },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+      signal: controller.signal,
+      next: { revalidate: init?.method && init.method !== "GET" ? 0 : 300 },
+    });
 
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+
+    return response.json() as Promise<T>;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return response.json() as Promise<T>;
 }
 
 export async function getSignals(email?: string): Promise<Signal[]> {

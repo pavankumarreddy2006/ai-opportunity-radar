@@ -1,5 +1,3 @@
-import sys
-
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core.logging import configure_logging, get_logger
@@ -20,5 +18,4 @@ if __name__ == "__main__":
         result = run_with_retries()
         logger.info("Hourly news update completed: %s", result)
     except Exception:
-        logger.exception("Hourly news update failed")
-        sys.exit(1)
+        logger.exception("Hourly news update failed after retries; cron exiting gracefully for next scheduled run")

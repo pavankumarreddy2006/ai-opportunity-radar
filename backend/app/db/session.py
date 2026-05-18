@@ -18,8 +18,9 @@ if settings.sqlalchemy_database_url.startswith("postgresql"):
         {
             "pool_size": 5,
             "max_overflow": 10,
+            "pool_timeout": 5,
             "pool_recycle": 1800,
-            "connect_args": {"connect_timeout": 1},
+            "connect_args": {"connect_timeout": 3},
         }
     )
 

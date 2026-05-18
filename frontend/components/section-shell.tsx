@@ -8,7 +8,7 @@ export function SectionShell({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-3xl border border-line bg-panel/80 p-6 shadow-glow backdrop-blur">
+    <section className="rounded-lg border border-line bg-panel/80 p-6 shadow-glow backdrop-blur">
       <div className="mb-5 flex items-end justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-text">{title}</h2>
@@ -19,4 +19,3 @@ export function SectionShell({
     </section>
   );
 }
-

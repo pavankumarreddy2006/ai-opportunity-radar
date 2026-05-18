@@ -21,8 +21,9 @@ def _title_similarity(left: str, right: str) -> float:
 class DedupeService:
     @staticmethod
     def persist_items(db: Session, items: list[ScrapedItem]) -> list[RawNews]:
-        inserted: list[RawNews] = []
+        changed: list[RawNews] = []
         pending_by_dedupe_key: dict[str, RawNews] = {}
+        changed_ids: set[int] = set()
 
         for item in items:
             dedupe_key = build_dedupe_key(item.title, item.link)
@@ -36,6 +37,9 @@ class DedupeService:
                 existing = DedupeService._find_similar_existing(db, item)
             if existing:
                 DedupeService._merge_item(existing, item)
+                if existing.id and existing.id not in changed_ids:
+                    changed.append(existing)
+                    changed_ids.add(existing.id)
                 continue
 
             model = RawNews(
@@ -52,13 +56,13 @@ class DedupeService:
                 mention_count=item.mention_count,
             )
             db.add(model)
-            inserted.append(model)
+            changed.append(model)
             pending_by_dedupe_key[dedupe_key] = model
 
         db.commit()
-        for record in inserted:
+        for record in changed:
             db.refresh(record)
-        return inserted
+        return changed
 
     @staticmethod
     def _merge_item(existing: RawNews, item: ScrapedItem) -> None:

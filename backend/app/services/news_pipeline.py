@@ -41,27 +41,31 @@ class NewsPipelineService:
             except Exception as exc:
                 logger.warning("Collector failed for %s: %s", scraper.source_name, exc)
 
-        inserted_raw = DedupeService.persist_items(db, collected)
+        changed_raw = DedupeService.persist_items(db, collected)
 
         users = list(db.scalars(select(User).options(joinedload(User.interests))).unique())
-        signals = self.ranking_service.rank_for_user(db, None, inserted_raw)
+        signals = self.ranking_service.rank_for_user(db, None, changed_raw)
         for user in users:
-            signals.extend(self.ranking_service.rank_for_user(db, user, inserted_raw))
+            signals.extend(self.ranking_service.rank_for_user(db, user, changed_raw))
 
-        hydrated_signals = list(
-            db.scalars(
-                select(Signal)
-                .options(joinedload(Signal.raw_news), joinedload(Signal.summary))
-                .where(Signal.id.in_([signal.id for signal in signals]))
-            ).unique()
-        )
+        signal_ids = [signal.id for signal in signals]
+        hydrated_signals = []
+        if signal_ids:
+            hydrated_signals = list(
+                db.scalars(
+                    select(Signal)
+                    .options(joinedload(Signal.raw_news), joinedload(Signal.summary))
+                    .where(Signal.id.in_(signal_ids))
+                ).unique()
+            )
         summaries = self.summarization_service.generate_for_signals(db, hydrated_signals)
+        status = "ok" if collected else "degraded"
 
         return {
-            "inserted_raw_items": len(inserted_raw),
+            "inserted_raw_items": len(changed_raw),
             "generated_signals": len(signals),
             "generated_summaries": len(summaries),
-            "status": "ok",
+            "status": status,
         }
 
 

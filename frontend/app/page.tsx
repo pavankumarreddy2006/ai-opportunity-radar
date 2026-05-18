@@ -1,5 +1,18 @@
 import type { ReactNode } from "react";
-import { BarChart3, Bolt, BrainCircuit, BriefcaseBusiness, CalendarDays, Compass, Github } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  BarChart3,
+  Bolt,
+  BookOpen,
+  BrainCircuit,
+  BriefcaseBusiness,
+  CalendarDays,
+  Compass,
+  Github,
+  HeartPulse,
+  Wrench,
+} from "lucide-react";
 
 import { PreferencesForm } from "@/components/preferences-form";
 import { SectionShell } from "@/components/section-shell";
@@ -22,7 +35,7 @@ export default async function HomePage() {
     <main className="min-h-screen px-4 py-6 md:px-8 lg:px-12">
       <div className="mx-auto max-w-7xl">
         <section className="relative overflow-hidden rounded-lg border border-white/10 bg-panel px-6 py-8 md:px-10 md:py-12">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(121,226,160,0.18),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(244,201,109,0.14),transparent_26%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(121,226,160,0.16),transparent_34%),linear-gradient(315deg,rgba(244,201,109,0.12),transparent_28%)]" />
           <div className="relative grid gap-8 lg:grid-cols-[1.4fr_0.8fr]">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-4 py-2 text-sm text-accent">
@@ -35,6 +48,29 @@ export default async function HomePage() {
               <p className="mt-5 max-w-2xl text-base leading-7 text-muted md:text-lg">
                 Get only the most important AI updates worth your attention.
               </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <a
+                  href="/dashboard"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-accent px-5 text-sm font-semibold text-ink transition hover:bg-accent/90"
+                >
+                  Open Dashboard
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+                <a
+                  href="/docs"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-5 text-sm font-semibold text-text transition hover:border-accent/40"
+                >
+                  <BookOpen className="h-4 w-4" />
+                  API Docs
+                </a>
+                <a
+                  href="/health"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-5 text-sm font-semibold text-text transition hover:border-accent/40"
+                >
+                  <HeartPulse className="h-4 w-4" />
+                  Health Check
+                </a>
+              </div>
               <div className="mt-8 grid gap-4 sm:grid-cols-3">
                 <MetricCard icon={<BrainCircuit className="h-5 w-5" />} label="AI-ranked" value="1-hour refresh" />
                 <MetricCard icon={<Bolt className="h-5 w-5" />} label="Signal-first" value="Top 5 daily" />
@@ -60,6 +96,14 @@ export default async function HomePage() {
               </div>
             </div>
           </div>
+        </section>
+
+        <section className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-5" aria-label="Radar sections">
+          <FeatureCard title="Top 5 AI Updates" detail="The shortlist worth acting on today." icon={<Bolt className="h-5 w-5" />} />
+          <FeatureCard title="Trending Topics" detail="Themes with cross-source momentum." icon={<Activity className="h-5 w-5" />} />
+          <FeatureCard title="AI Tool Trends" detail="Developer tools, agents, and infrastructure." icon={<Wrench className="h-5 w-5" />} />
+          <FeatureCard title="Open Source AI" detail="Repos and infrastructure shifts gaining traction." icon={<Github className="h-5 w-5" />} />
+          <FeatureCard title="Latest Important Updates" detail="Fresh signals with fallback data when sources wake." icon={<CalendarDays className="h-5 w-5" />} />
         </section>
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
@@ -121,6 +165,16 @@ function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; va
       </div>
       <p className="mt-3 text-lg font-semibold text-text">{value}</p>
     </div>
+  );
+}
+
+function FeatureCard({ icon, title, detail }: { icon: ReactNode; title: string; detail: string }) {
+  return (
+    <article className="rounded-lg border border-line bg-panel/75 p-5 shadow-glow">
+      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent">{icon}</div>
+      <h2 className="text-base font-semibold leading-snug text-text">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-muted">{detail}</p>
+    </article>
   );
 }
 
