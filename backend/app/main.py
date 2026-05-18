@@ -1,8 +1,11 @@
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 from app.api.router import api_router
 from app.core.logging import configure_logging, get_logger
@@ -10,6 +13,9 @@ from app.core.settings import get_settings
 
 configure_logging()
 logger = get_logger(__name__)
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
 @asynccontextmanager
@@ -35,20 +41,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+
+
+def _build_dashboard_context() -> dict:
+    now = datetime.now(timezone.utc)
+    return {
+        "service_name": "AI News Collector API",
+        "service_status": "ONLINE",
+        "api_health": "Checking",
+        "total_news_count": "Loading",
+        "trending_topics_count": "Loading",
+        "last_update_time": now,
+        "top_news": [],
+        "trending_topics": [],
+        "latest_updates": [
+            "Root dashboard is live with Jinja2 templates.",
+            "API routes remain available for automation and integrations.",
+            "Swagger documentation is available at /docs.",
+        ],
+        "endpoints": [
+            {"label": "Health Check", "path": "/health", "description": "Runtime status and environment metadata."},
+            {"label": "News Feed", "path": "/news", "description": "Ranked AI news signals."},
+            {"label": "Top 5 AI News", "path": "/top5", "description": "Highest-priority AI updates."},
+            {"label": "Trending Topics", "path": "/trending", "description": "Signals grouped by trend section."},
+            {"label": "Dashboard API", "path": "/dashboard", "description": "Combined API payload for dashboard clients."},
+            {"label": "Weekly Report", "path": "/weekly-report", "description": "Executive weekly summary payload."},
+        ],
+    }
+
 
 @app.get("/", response_model=None)
-def root():
-    settings = get_settings()
-    if settings.app_env == "production":
-        return RedirectResponse(settings.frontend_url, status_code=307)
-
-    return {
-        "status": "ok",
-        "service": "AI News Collector API",
-        "docs": "/docs",
-        "health": "/health",
-        "endpoints": ["/news", "/top5", "/trending", "/dashboard", "/weekly-report"],
-    }
+def root(request: Request):
+    return templates.TemplateResponse(request, "index.html", _build_dashboard_context())
 
 
 app.include_router(api_router)

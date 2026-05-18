@@ -19,7 +19,10 @@ def test_root_endpoint() -> None:
     response = client.get("/")
 
     assert response.status_code == 200
-    assert response.json()["service"] == "AI News Collector API"
+    assert "text/html" in response.headers["content-type"]
+    assert "AI News Collector Dashboard" in response.text
+    assert "/docs" in response.text
+    assert "/health" in response.text
 
 
 def test_required_news_endpoints_are_registered() -> None:
