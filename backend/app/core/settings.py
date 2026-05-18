@@ -11,7 +11,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_env: str = "development"
+    app_env: str = Field(default="development", alias="APP_ENV")
     database_url: str = Field(alias="DATABASE_URL")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     openrouter_api_key: str | None = Field(default=None, alias="OPENROUTER_API_KEY")
@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     cors_origins: str = Field(default="http://localhost:3000", alias="CORS_ORIGINS")
     reddit_user_agent: str = Field(default="ai-news-collector/1.0", alias="REDDIT_USER_AGENT")
     youtube_feed_urls: str = Field(default="", alias="YOUTUBE_FEED_URLS")
+
+    @property
+    def sqlalchemy_database_url(self) -> str:
+        if self.database_url.startswith("postgresql://"):
+            return self.database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+        if self.database_url.startswith("postgres://"):
+            return self.database_url.replace("postgres://", "postgresql+psycopg://", 1)
+        return self.database_url
 
     @property
     def cors_origin_list(self) -> list[str]:
