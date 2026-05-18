@@ -49,7 +49,7 @@ Select the GitHub repo and Render will read `render.yaml`.
 The Blueprint creates:
 
 - `ai-opportunity-radar-api`
-- `ai-opportunity-radar-web`
+- `ai-opportunity-radar`
 - `ai-opportunity-radar-hourly-refresh`
 - `ai-opportunity-radar-db`
 
@@ -71,10 +71,16 @@ OPENROUTER_API_KEY=your_openrouter_key
 
 ## Post-Deploy Checks
 
+Open the frontend dashboard:
+
+```text
+https://ai-opportunity-radar.onrender.com
+```
+
 Check backend:
 
 ```text
-https://YOUR_API_SERVICE.onrender.com/health
+https://ai-opportunity-radar-api.onrender.com/health
 ```
 
 Expected:
@@ -93,7 +99,7 @@ The Blueprint database reference was not applied. Reopen the Blueprint resources
 
 `ModuleNotFoundError`
 
-Confirm the backend service root directory is `backend` and build command is `pip install -r requirements.txt && alembic upgrade head`.
+Confirm the backend service root directory is `backend`, build command is `pip install -r requirements.txt`, and start command is `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
 
 Frontend builds but dashboard is empty
 

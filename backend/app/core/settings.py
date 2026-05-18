@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     openai_model: str = Field(default="gpt-4.1-mini", alias="OPENAI_MODEL")
     secret_key: str = Field(default="change-me-render-secret", alias="SECRET_KEY")
     cors_origins: str = Field(default="http://localhost:3000", alias="CORS_ORIGINS")
+    frontend_url: str = Field(default="http://localhost:3000", alias="FRONTEND_URL")
     reddit_user_agent: str = Field(default="ai-news-collector/1.0", alias="REDDIT_USER_AGENT")
     youtube_feed_urls: str = Field(default="", alias="YOUTUBE_FEED_URLS")
 

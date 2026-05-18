@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from app.api.router import api_router
 from app.core.logging import configure_logging, get_logger
@@ -35,8 +36,12 @@ app.add_middleware(
 )
 
 
-@app.get("/")
-def root() -> dict[str, str | list[str]]:
+@app.get("/", response_model=None)
+def root():
+    settings = get_settings()
+    if settings.app_env == "production":
+        return RedirectResponse(settings.frontend_url, status_code=307)
+
     return {
         "status": "ok",
         "service": "AI News Collector API",
