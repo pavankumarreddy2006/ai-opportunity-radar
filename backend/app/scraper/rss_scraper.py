@@ -15,12 +15,9 @@ logger = get_logger(__name__)
 class RssScraper(BaseScraper):
     source_name = "rss"
     feeds = {
-        "anthropic": "https://www.anthropic.com/news/rss.xml",
         "google-ai": "https://blog.google/technology/ai/rss/",
         "hugging-face": "https://huggingface.co/blog/feed.xml",
-        "microsoft-ai": "https://blogs.microsoft.com/ai/feed/",
         "techcrunch": "https://techcrunch.com/feed/",
-        "venturebeat-ai": "https://venturebeat.com/ai/feed/",
         "openai-blog": "https://openai.com/news/rss.xml",
         "github-blog": "https://github.blog/feed/",
     }

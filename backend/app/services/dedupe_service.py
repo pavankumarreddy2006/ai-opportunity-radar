@@ -22,38 +22,20 @@ class DedupeService:
     @staticmethod
     def persist_items(db: Session, items: list[ScrapedItem]) -> list[RawNews]:
         inserted: list[RawNews] = []
+        pending_by_dedupe_key: dict[str, RawNews] = {}
 
         for item in items:
             dedupe_key = build_dedupe_key(item.title, item.link)
+            pending = pending_by_dedupe_key.get(dedupe_key)
+            if pending:
+                DedupeService._merge_item(pending, item)
+                continue
+
             existing = db.scalar(select(RawNews).where(RawNews.dedupe_key == dedupe_key))
             if not existing:
                 existing = DedupeService._find_similar_existing(db, item)
             if existing:
-                existing.mention_count = max(existing.mention_count, item.mention_count)
-                existing.engagement_score = max(existing.engagement_score, item.engagement_score)
-                existing.credibility_score = max(existing.credibility_score, item.credibility_score)
-                existing.tags = sorted(set([*existing.tags, *item.tags]))
-                existing.raw_payload = {
-                    **(existing.raw_payload or {}),
-                    "merged_sources": sorted(
-                        set(
-                            [
-                                *((existing.raw_payload or {}).get("merged_sources") or []),
-                                existing.source,
-                                item.source,
-                            ]
-                        )
-                    ),
-                    "duplicate_links": sorted(
-                        set(
-                            [
-                                *((existing.raw_payload or {}).get("duplicate_links") or []),
-                                normalize_url(existing.link),
-                                normalize_url(item.link),
-                            ]
-                        )
-                    ),
-                }
+                DedupeService._merge_item(existing, item)
                 continue
 
             model = RawNews(
@@ -71,11 +53,40 @@ class DedupeService:
             )
             db.add(model)
             inserted.append(model)
+            pending_by_dedupe_key[dedupe_key] = model
 
         db.commit()
         for record in inserted:
             db.refresh(record)
         return inserted
+
+    @staticmethod
+    def _merge_item(existing: RawNews, item: ScrapedItem) -> None:
+        existing.mention_count = max(existing.mention_count, item.mention_count)
+        existing.engagement_score = max(existing.engagement_score, item.engagement_score)
+        existing.credibility_score = max(existing.credibility_score, item.credibility_score)
+        existing.tags = sorted(set([*existing.tags, *item.tags]))
+        existing.raw_payload = {
+            **(existing.raw_payload or {}),
+            "merged_sources": sorted(
+                set(
+                    [
+                        *((existing.raw_payload or {}).get("merged_sources") or []),
+                        existing.source,
+                        item.source,
+                    ]
+                )
+            ),
+            "duplicate_links": sorted(
+                set(
+                    [
+                        *((existing.raw_payload or {}).get("duplicate_links") or []),
+                        normalize_url(existing.link),
+                        normalize_url(item.link),
+                    ]
+                )
+            ),
+        }
 
     @staticmethod
     def _find_similar_existing(db: Session, item: ScrapedItem) -> RawNews | None:

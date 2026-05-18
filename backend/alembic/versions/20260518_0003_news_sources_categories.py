@@ -63,17 +63,25 @@ def upgrade() -> None:
     op.create_index("ix_news_source_id", "news", ["source_id"], unique=False)
     op.create_index("ix_news_category_id", "news", ["category_id"], unique=False)
 
-    op.add_column("summaries", sa.Column("news_id", sa.Integer(), nullable=True))
-    op.create_foreign_key("fk_summaries_news_id_news", "summaries", "news", ["news_id"], ["id"], ondelete="CASCADE")
-    op.create_index("ix_summaries_news_id", "summaries", ["news_id"], unique=False)
-    op.alter_column("summaries", "signal_id", existing_type=sa.Integer(), nullable=True)
+    with op.batch_alter_table("summaries") as batch_op:
+        batch_op.add_column(sa.Column("news_id", sa.Integer(), nullable=True))
+        batch_op.create_foreign_key(
+            "fk_summaries_news_id_news",
+            "news",
+            ["news_id"],
+            ["id"],
+            ondelete="CASCADE",
+        )
+        batch_op.create_index("ix_summaries_news_id", ["news_id"], unique=False)
+        batch_op.alter_column("signal_id", existing_type=sa.Integer(), nullable=True)
 
 
 def downgrade() -> None:
-    op.alter_column("summaries", "signal_id", existing_type=sa.Integer(), nullable=False)
-    op.drop_index("ix_summaries_news_id", table_name="summaries")
-    op.drop_constraint("fk_summaries_news_id_news", "summaries", type_="foreignkey")
-    op.drop_column("summaries", "news_id")
+    with op.batch_alter_table("summaries") as batch_op:
+        batch_op.alter_column("signal_id", existing_type=sa.Integer(), nullable=False)
+        batch_op.drop_index("ix_summaries_news_id")
+        batch_op.drop_constraint("fk_summaries_news_id_news", type_="foreignkey")
+        batch_op.drop_column("news_id")
 
     op.drop_index("ix_news_category_id", table_name="news")
     op.drop_index("ix_news_source_id", table_name="news")

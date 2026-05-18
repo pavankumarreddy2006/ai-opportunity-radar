@@ -15,12 +15,9 @@ logger = get_logger(__name__)
 class TechBlogScraper(BaseScraper):
     source_name = "tech-blog"
     feeds = {
-        "anthropic": "https://www.anthropic.com/news/rss.xml",
-        "deepmind": "https://deepmind.google/discover/blog/rss.xml",
         "hugging-face": "https://huggingface.co/blog/feed.xml",
         "nvidia-ai": "https://blogs.nvidia.com/blog/category/deep-learning/feed/",
         "vercel": "https://vercel.com/atom",
-        "render": "https://render.com/blog/rss.xml",
     }
 
     def fetch(self) -> Iterable[ScrapedItem]:

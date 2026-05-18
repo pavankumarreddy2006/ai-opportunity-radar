@@ -6,7 +6,7 @@ from email.utils import parsedate_to_datetime
 from urllib.parse import urlparse, urlunparse
 
 import httpx
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from app.core.logging import get_logger
 
@@ -99,8 +99,17 @@ def parse_int(value: str | int | float | None) -> int:
     return int(digits) if digits else 0
 
 
+def _retryable_http_error(exc: BaseException) -> bool:
+    if isinstance(exc, httpx.TimeoutException):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        status_code = exc.response.status_code
+        return status_code == 429 or status_code == 408 or status_code >= 500
+    return isinstance(exc, httpx.TransportError)
+
+
 @retry(
-    retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException)),
+    retry=retry_if_exception(_retryable_http_error),
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=1, max=8),
     reraise=True,

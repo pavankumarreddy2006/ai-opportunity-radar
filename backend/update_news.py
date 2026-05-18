@@ -3,6 +3,7 @@ import sys
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core.logging import configure_logging, get_logger
+from app.db import base as _models  # noqa: F401 - register SQLAlchemy model relationships for cron runs.
 from app.services.news_pipeline import run_news_update
 
 configure_logging()
