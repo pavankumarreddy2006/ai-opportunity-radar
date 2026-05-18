@@ -13,6 +13,8 @@ services:
         fromDatabase:
           name: ai-news-collector-db
           property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.11.11
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENROUTER_API_KEY
@@ -57,6 +59,8 @@ services:
         fromDatabase:
           name: ai-news-collector-db
           property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.11.11
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENROUTER_API_KEY
