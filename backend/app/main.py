@@ -34,4 +34,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.get("/")
+def root() -> dict[str, str | list[str]]:
+    return {
+        "status": "ok",
+        "service": "AI News Collector API",
+        "docs": "/docs",
+        "health": "/health",
+        "endpoints": ["/news", "/top5", "/trending", "/dashboard", "/weekly-report"],
+    }
+
+
 app.include_router(api_router)

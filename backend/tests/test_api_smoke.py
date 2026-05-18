@@ -15,6 +15,13 @@ def test_health_endpoint() -> None:
     assert response.json()["status"] == "ok"
 
 
+def test_root_endpoint() -> None:
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert response.json()["service"] == "AI News Collector API"
+
+
 def test_required_news_endpoints_are_registered() -> None:
     paths = {route.path for route in app.routes}
 
