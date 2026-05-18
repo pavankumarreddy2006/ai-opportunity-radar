@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -10,5 +10,13 @@ router = APIRouter()
 
 @router.post("", response_model=UpdateResponse)
 def update_news(db: Session = Depends(get_db)) -> UpdateResponse:
-    result = NewsPipelineService().run(db)
-    return UpdateResponse(**result)
+    try:
+        result = NewsPipelineService().run(db)
+        return UpdateResponse(**result)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="News update failed") from exc
+
+
+@router.get("", response_model=UpdateResponse)
+def update_news_get(db: Session = Depends(get_db)) -> UpdateResponse:
+    return update_news(db)

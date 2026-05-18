@@ -24,7 +24,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export async function getSignals(email?: string): Promise<Signal[]> {
   const query = email ? `?email=${encodeURIComponent(email)}&limit=5` : "?limit=5";
   try {
-    const signals = await request<Signal[]>(`/signals${query}`);
+    const signals = await request<Signal[]>(`/top5${query}`);
     return signals.length > 0 ? signals : fallbackSignals;
   } catch {
     return fallbackSignals;

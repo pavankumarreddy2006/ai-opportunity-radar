@@ -6,7 +6,7 @@ import { SectionShell } from "@/components/section-shell";
 import { SignalCard } from "@/components/signal-card";
 import { getPreferences, getSignals, getTrending, getWeeklyReport } from "@/lib/api";
 
-const DEFAULT_EMAIL = "demo@opportunityradar.ai";
+const DEFAULT_EMAIL = "demo@ainewscollector.ai";
 
 export default async function HomePage() {
   const [signals, trending, preferences, weeklyReport] = await Promise.all([
@@ -27,13 +27,13 @@ export default async function HomePage() {
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-4 py-2 text-sm text-accent">
                 <Compass className="h-4 w-4" />
-                Personalized daily intelligence
+                AI news intelligence
               </div>
               <h1 className="mt-6 max-w-3xl text-4xl font-semibold leading-tight text-text md:text-6xl">
-                The top five AI and startup signals you should care about today.
+                The top AI updates you should care about today.
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-muted md:text-lg">
-                AI Opportunity Radar scans developer communities, trend surfaces, and research streams, then turns raw noise into a ranked action list built around your interests.
+                AI News Collector scans communities, open source launches, research streams, blogs, and video feeds, then cuts the noise into a ranked action list.
               </p>
               <div className="mt-8 grid gap-4 sm:grid-cols-3">
                 <MetricCard icon={<BrainCircuit className="h-5 w-5" />} label="AI-ranked" value="1-hour refresh" />
@@ -63,7 +63,7 @@ export default async function HomePage() {
         </section>
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-          <SectionShell title="Top 5 Signals Today" subtitle="A ranked shortlist built for immediate attention.">
+          <SectionShell title="Top 5 AI Updates Today" subtitle="A ranked shortlist built for immediate attention.">
             <div className="grid gap-4">
               {signals.map((signal) => (
                 <SignalCard key={signal.id} signal={signal} />
@@ -126,9 +126,9 @@ function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; va
 
 function EmptyState({ section }: { section: string }) {
   const icon =
-    section === "Open Source Trends" ? (
+    section === "Latest Open Source AI" ? (
       <Github className="h-6 w-6" />
-    ) : section === "Startup Trends" ? (
+    ) : section === "Startup and Funding" ? (
       <BriefcaseBusiness className="h-6 w-6" />
     ) : (
       <Compass className="h-6 w-6" />

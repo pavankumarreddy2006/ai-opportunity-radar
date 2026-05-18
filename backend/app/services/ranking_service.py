@@ -10,24 +10,30 @@ from app.models.trend_score import TrendScore
 from app.models.user import User
 from app.scraper.utils import tokenize, utc_now
 
+MIN_IMPORTANCE_SCORE = 40
+
 INTEREST_KEYWORDS = {
     "ai": {"ai", "llm", "model", "openai", "agent", "inference"},
-    "coding": {"code", "coding", "developer", "programming", "framework"},
+    "coding": {"code", "coding", "developer", "programming", "framework", "sdk", "api"},
     "startups": {"startup", "saas", "launch", "founder"},
     "automation": {"automation", "workflow", "agent", "ops"},
     "jobs": {"job", "career", "hiring", "remote"},
-    "open-source": {"open-source", "github", "repo", "library"},
+    "open-source": {"open-source", "opensource", "github", "repo", "library", "stars"},
     "funding": {"funding", "seed", "series", "venture"},
     "productivity tools": {"tool", "workflow", "productivity", "assistant"},
+    "research": {"research", "paper", "benchmark", "eval", "dataset"},
+    "infrastructure": {"inference", "gpu", "database", "vector", "deployment", "hosting"},
 }
 
 SIGNAL_TYPE_KEYWORDS = {
-    "AI breakthrough": {"ai", "llm", "model", "openai", "agent", "inference", "benchmark"},
-    "startup opportunity": {"startup", "saas", "founder", "launch", "customer", "market"},
-    "coding trend": {"code", "coding", "developer", "programming", "framework", "library"},
-    "hiring trend": {"job", "career", "hiring", "remote", "talent"},
-    "funding signal": {"funding", "seed", "series", "venture", "raise"},
-    "open-source trend": {"open-source", "github", "repo", "stars", "library"},
+    "Model Releases": {"model", "gpt", "llm", "claude", "gemini", "llama", "openai", "anthropic"},
+    "Research Breakthroughs": {"research", "paper", "benchmark", "eval", "dataset", "reasoning"},
+    "AI Agents": {"agent", "agents", "automation", "workflow", "tool-use", "mcp"},
+    "Open Source AI": {"open-source", "opensource", "github", "repo", "stars", "library"},
+    "Developer Tools": {"code", "coding", "developer", "programming", "framework", "sdk", "api"},
+    "AI Infrastructure": {"inference", "gpu", "vector", "database", "deployment", "hosting"},
+    "Startup and Funding": {"startup", "saas", "founder", "launch", "customer", "market", "funding", "venture"},
+    "Policy and Safety": {"policy", "regulation", "safety", "copyright", "privacy"},
 }
 
 
@@ -42,20 +48,28 @@ class RankingService:
 
             tokens = set(tokenize(f"{raw.title} {raw.summary_snippet or ''} {' '.join(raw.tags)}"))
             relevance_score, matched_interest = self._relevance(tokens, interests)
-            trend_velocity = min(raw.mention_count / 10, 1.0)
+            merged_sources = (raw.raw_payload or {}).get("merged_sources") or [raw.source]
+            duplicate_links = (raw.raw_payload or {}).get("duplicate_links") or [raw.link]
+            cross_source_score = min((len(set(merged_sources)) - 1) / 3, 1.0)
+            trend_velocity = min((raw.mention_count / 12) + (0.25 * cross_source_score), 1.0)
             source_credibility = raw.credibility_score
             freshness_score = self._freshness(raw)
-            engagement_score = min(raw.engagement_score / 500, 1.0)
+            engagement_score = self._engagement(raw)
+            reddit_mentions = raw.mention_count if raw.source == "reddit" else 0
+            github_stars = raw.engagement_score if raw.source == "github" else 0
             score = int(
                 100
                 * (
-                    0.25 * trend_velocity
+                    0.22 * trend_velocity
                     + 0.2 * source_credibility
-                    + 0.25 * relevance_score
+                    + 0.2 * relevance_score
                     + 0.15 * freshness_score
                     + 0.15 * engagement_score
+                    + 0.08 * cross_source_score
                 )
             )
+            if score < MIN_IMPORTANCE_SCORE:
+                continue
             opportunity_score = min(10, max(1, round((score / 100) * 10)))
             ranking_factors = {
                 "trend_velocity": trend_velocity,
@@ -63,7 +77,11 @@ class RankingService:
                 "relevance_score": relevance_score,
                 "freshness_score": freshness_score,
                 "engagement_score": engagement_score,
-                "reddit_mentions": raw.mention_count,
+                "cross_source_score": cross_source_score,
+                "reddit_mentions": reddit_mentions,
+                "github_stars": github_stars,
+                "merged_sources": sorted(set(merged_sources)),
+                "duplicate_links": sorted(set(duplicate_links)),
             }
 
             signal_type = self._signal_type(tokens, matched_interest or (raw.tags[0] if raw.tags else "general"))
@@ -92,8 +110,8 @@ class RankingService:
                     trend_velocity=trend_velocity,
                     engagement_score=engagement_score,
                     freshness_score=freshness_score,
-                    reddit_activity_score=min(raw.mention_count / 50, 1.0) if raw.source == "reddit" else 0.0,
-                    github_star_score=min(raw.engagement_score / 5000, 1.0) if raw.source == "github" else 0.0,
+                    reddit_activity_score=min(reddit_mentions / 50, 1.0),
+                    github_star_score=min(github_stars / 5000, 1.0),
                     credibility_score=source_credibility,
                     composite_score=score,
                     factors=ranking_factors,
@@ -124,6 +142,15 @@ class RankingService:
         age_hours = max((utc_now() - raw.published_at).total_seconds() / 3600, 0)
         return max(0.05, min(1.0, 1 - (age_hours / 48)))
 
+    def _engagement(self, raw: RawNews) -> float:
+        if raw.source == "github":
+            return min(raw.engagement_score / 5000, 1.0)
+        if raw.source == "reddit":
+            return min(raw.engagement_score / 1000, 1.0)
+        if raw.source == "hackernews":
+            return min(raw.engagement_score / 700, 1.0)
+        return min(raw.engagement_score / 150, 1.0)
+
     def _signal_type(self, tokens: set[str], fallback: str) -> str:
         best_type = fallback
         best_overlap = 0
@@ -150,10 +177,10 @@ class RankingService:
     @staticmethod
     def grouped_trending(db: Session, limit: int = 4) -> dict[str, list[Signal]]:
         sections = {
-            "Trending Opportunities": ["startup opportunity", "hiring trend", "funding signal"],
-            "Open Source Trends": ["open-source trend", "coding trend"],
-            "Startup Trends": ["startup opportunity", "funding signal"],
-            "Latest AI Breakthroughs": ["AI breakthrough"],
+            "Trending AI Topics": ["Model Releases", "Research Breakthroughs", "AI Agents", "Policy and Safety"],
+            "Latest Open Source AI": ["Open Source AI"],
+            "Important AI Tools": ["Developer Tools", "AI Infrastructure", "AI Agents"],
+            "Startup and Funding": ["Startup and Funding"],
         }
         output: dict[str, list[Signal]] = {}
         for section, categories in sections.items():

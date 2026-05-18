@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: ai-opportunity-radar-api
+    name: ai-news-collector-api
     runtime: python
     plan: free
     rootDir: backend
@@ -11,7 +11,7 @@ services:
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: ai-opportunity-radar-db
+          name: ai-news-collector-db
           property: connectionString
       - key: OPENAI_API_KEY
         sync: false
@@ -27,11 +27,11 @@ services:
         value: production
       - key: CORS_ORIGINS
         fromService:
-          name: ai-opportunity-radar-web
+          name: ai-news-collector-web
           type: web
           property: host
   - type: web
-    name: ai-opportunity-radar-web
+    name: ai-news-collector-web
     runtime: node
     plan: free
     rootDir: frontend
@@ -41,11 +41,11 @@ services:
     envVars:
       - key: NEXT_PUBLIC_API_BASE_URL
         fromService:
-          name: ai-opportunity-radar-api
+          name: ai-news-collector-api
           type: web
           property: host
   - type: cron
-    name: ai-opportunity-radar-hourly-refresh
+    name: ai-news-collector-hourly-refresh
     runtime: python
     plan: free
     rootDir: backend
@@ -55,7 +55,7 @@ services:
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: ai-opportunity-radar-db
+          name: ai-news-collector-db
           property: connectionString
       - key: OPENAI_API_KEY
         sync: false
@@ -69,8 +69,8 @@ services:
         generateValue: true
 
 databases:
-  - name: ai-opportunity-radar-db
-    databaseName: ai_opportunity_radar
-    user: ai_opportunity_radar
+  - name: ai-news-collector-db
+    databaseName: ai_news_collector
+    user: ai_news_collector
     plan: free
     postgresMajorVersion: "16"

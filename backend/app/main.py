@@ -14,14 +14,14 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     settings = get_settings()
-    logger.info("Starting AI Opportunity Radar in %s mode", settings.app_env)
+    logger.info("Starting AI News Collector in %s mode", settings.app_env)
     yield
-    logger.info("Shutting down AI Opportunity Radar")
+    logger.info("Shutting down AI News Collector")
 
 
 app = FastAPI(
-    title="AI Opportunity Radar API",
-    description="Personalized AI intelligence dashboard backend.",
+    title="AI News Collector API",
+    description="AI-powered news intelligence dashboard backend.",
     version="0.1.0",
     lifespan=lifespan,
 )

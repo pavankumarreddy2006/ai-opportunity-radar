@@ -15,6 +15,15 @@ def test_health_endpoint() -> None:
     assert response.json()["status"] == "ok"
 
 
+def test_required_news_endpoints_are_registered() -> None:
+    paths = {route.path for route in app.routes}
+
+    assert "/news" in paths
+    assert "/top5" in paths
+    assert "/trending" in paths
+    assert "/update-news" in paths
+
+
 def test_auth_token_round_trip() -> None:
     token = create_access_token("founder@example.com")
     payload = decode_access_token(token)
@@ -37,4 +46,4 @@ def test_ranking_classifier_uses_required_signal_types() -> None:
         "general",
     )
 
-    assert signal_type == "open-source trend"
+    assert signal_type == "Open Source AI"

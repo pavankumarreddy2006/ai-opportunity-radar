@@ -1,8 +1,11 @@
 import json
+import re
 
 from sqlalchemy.orm import Session
 
-from app.ai.client import get_ai_client
+from openai import OpenAI
+
+from app.ai.client import get_openai_client, get_openrouter_client
 from app.ai.prompts import SUMMARY_SYSTEM_PROMPT
 from app.core.logging import get_logger
 from app.core.settings import get_settings
@@ -32,8 +35,8 @@ class SummarizationService:
         return created
 
     def _generate_summary(self, signal: Signal) -> dict:
-        client = get_ai_client()
-        if not client:
+        clients = [client for client in [get_openai_client(), get_openrouter_client()] if client]
+        if not clients:
             return self._fallback_summary(signal)
 
         settings = get_settings()
@@ -43,25 +46,52 @@ class SummarizationService:
             "tags": signal.raw_news.tags,
             "snippet": signal.raw_news.summary_snippet,
             "importance_score": signal.importance_score,
+            "ranking_factors": signal.ranking_factors,
+            "category": signal.category,
         }
+        last_error: Exception | None = None
+        for client in clients:
+            try:
+                return self._ask_model(client, settings.openai_model, user_prompt, signal)
+            except Exception as exc:
+                last_error = exc
+                logger.warning("AI summary provider failed for signal %s: %s", signal.id, exc)
+
+        logger.warning("Falling back to local summary for signal %s after provider errors: %s", signal.id, last_error)
+        return self._fallback_summary(signal)
+
+    def _ask_model(self, client: OpenAI, model: str, user_prompt: dict, signal: Signal) -> dict:
+        response = client.responses.create(
+            model=model,
+            input=[
+                {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
+                {"role": "user", "content": json.dumps(user_prompt)},
+            ],
+        )
+        text = response.output_text
+        return self._normalize_payload(self._parse_json(text), signal)
+
+    def _parse_json(self, text: str) -> dict:
         try:
-            response = client.responses.create(
-                model=settings.openai_model,
-                input=[
-                    {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
-                    {"role": "user", "content": json.dumps(user_prompt)},
-                ],
-            )
-            text = response.output_text
-            return self._normalize_payload(json.loads(text), signal)
-        except Exception as exc:
-            logger.warning("Falling back to local summary for signal %s: %s", signal.id, exc)
-            return self._fallback_summary(signal)
+            return json.loads(text)
+        except json.JSONDecodeError:
+            match = re.search(r"\{.*\}", text, flags=re.DOTALL)
+            if not match:
+                raise
+            return json.loads(match.group(0))
 
     def _normalize_payload(self, payload: dict, signal: Signal) -> dict:
         fallback = self._fallback_summary(signal)
         normalized = {**fallback, **{key: value for key, value in payload.items() if value}}
         normalized["opportunity_score"] = max(1, min(10, int(normalized["opportunity_score"])))
+        for key in [
+            "headline",
+            "what_happened",
+            "why_it_matters",
+            "why_you_should_care",
+            "action_recommendation",
+        ]:
+            normalized[key] = str(normalized[key]).strip()
         return normalized
 
     def _fallback_summary(self, signal: Signal) -> dict:
