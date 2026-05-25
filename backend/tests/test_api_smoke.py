@@ -58,6 +58,23 @@ def test_auth_endpoint_issues_bearer_token() -> None:
     assert decode_access_token(body["access_token"])["sub"] == "founder@example.com"
 
 
+def test_preferences_interaction_endpoint_accepts_behavior_events() -> None:
+    response = client.post(
+        "/preferences/interaction",
+        json={
+            "email": "reader@example.com",
+            "signal_id": 9001,
+            "action": "save",
+            "category": "AI Agents",
+            "topics": ["ai agents", "automation"],
+            "reading_seconds": 25,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] in {"ok", "degraded"}
+
+
 def test_ranking_classifier_uses_required_signal_types() -> None:
     signal_type = RankingService()._signal_type(
         {"github", "repo", "stars", "library"},

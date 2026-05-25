@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     frontend_url: str = Field(default="http://localhost:3000", alias="FRONTEND_URL")
     reddit_user_agent: str = Field(default="ai-news-collector/1.0", alias="REDDIT_USER_AGENT")
     youtube_feed_urls: str = Field(default="", alias="YOUTUBE_FEED_URLS")
+    update_news_token: str | None = Field(default=None, alias="UPDATE_NEWS_TOKEN")
 
     @property
     def sqlalchemy_database_url(self) -> str:

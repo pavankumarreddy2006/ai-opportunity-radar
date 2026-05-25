@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.schemas.interest import PreferenceResponse, PreferenceUpdateRequest
+from app.schemas.interest import InteractionTrackRequest, PreferenceResponse, PreferenceUpdateRequest
 from app.services.interest_service import InterestService
 
 router = APIRouter()
@@ -33,3 +33,15 @@ def upsert_preferences(payload: PreferenceUpdateRequest, db: Session = Depends(g
     except Exception as exc:
         raise HTTPException(status_code=500, detail="Failed to save preferences") from exc
 
+
+@router.post("/interaction")
+def track_interaction(payload: InteractionTrackRequest, db: Session = Depends(get_db)) -> dict[str, str]:
+    try:
+        if not payload.email or not payload.email.strip():
+            raise HTTPException(status_code=400, detail="Email is required")
+        InterestService.track_interaction(db, payload)
+        return {"status": "ok"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        return {"status": "degraded"}

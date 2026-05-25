@@ -8,19 +8,37 @@ import {
   Clock,
   Flame,
   Heart,
+  Moon,
   RefreshCw,
   Search,
   Share2,
   Sparkles,
+  Sun,
   UserRound,
   X,
 } from "lucide-react";
 
-import { getSignals, savePreferences } from "@/lib/api";
+import { NewsImage } from "@/components/news/NewsImage";
+import { getSignals, savePreferences, trackInteraction } from "@/lib/api";
 import { PreferenceResponse, Signal, TrendingGroup, WeeklyReport } from "@/lib/types";
-
-const DEFAULT_EMAIL = "demo@ainewscollector.ai";
-const STORAGE_KEY = "ai-radar-profile-v2";
+import { scoreNews } from "@/services/newsScoring";
+import {
+  DEFAULT_EMAIL,
+  DEFAULT_PROFILE,
+  FeedTab,
+  RadarProfile,
+  addSearch,
+  dedupeSignals,
+  filterSignals,
+  loadProfile,
+  rankRecommendations,
+  recordBehavior,
+  saveProfile,
+  savedSignals,
+  signalTopics,
+  sortLatest,
+  sortTrending,
+} from "@/services/recommendationEngine";
 
 const INTERESTS = [
   "AI Tools",
@@ -40,38 +58,7 @@ const INTERESTS = [
   "Content Creation",
 ];
 
-type FeedTab = "for-you" | "trending" | "latest" | "saved";
-
-type RadarProfile = {
-  email: string;
-  interests: string[];
-  likedIds: number[];
-  savedIds: number[];
-  clickedIds: number[];
-  topicWeights: Record<string, number>;
-  onboarded: boolean;
-};
-
 type Toast = { id: number; message: string; tone?: "success" | "error" };
-
-const DEFAULT_PROFILE: RadarProfile = {
-  email: DEFAULT_EMAIL,
-  interests: [],
-  likedIds: [],
-  savedIds: [],
-  clickedIds: [],
-  topicWeights: {},
-  onboarded: false,
-};
-
-const CATEGORY_IMAGES: Record<string, string> = {
-  "ai agents": "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1200&q=80",
-  "model releases": "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=1200&q=80",
-  "research breakthroughs": "https://images.unsplash.com/photo-1518152006812-edab29b069ac?auto=format&fit=crop&w=1200&q=80",
-  "open source ai": "https://images.unsplash.com/photo-1556075798-4825dfaaf498?auto=format&fit=crop&w=1200&q=80",
-  "developer tools": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80",
-  "startup and funding": "https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1200&q=80",
-};
 
 export function NewsFeed({
   initialSignals,
@@ -88,8 +75,9 @@ export function NewsFeed({
   const [profile, setProfile] = useState<RadarProfile>(DEFAULT_PROFILE);
   const [activeTab, setActiveTab] = useState<FeedTab>("for-you");
   const [query, setQuery] = useState("");
-  const [visibleCount, setVisibleCount] = useState(9);
+  const [visibleCount, setVisibleCount] = useState(10);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [isPending, startTransition] = useTransition();
   const deferredQuery = useDeferredValue(query);
 
@@ -108,43 +96,39 @@ export function NewsFeed({
 
   useEffect(() => {
     if (profile.email) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+      saveProfile(profile);
     }
   }, [profile]);
 
-  const allSignals = useMemo(() => dedupeSignals(signals, trending.flatMap((group) => group.signals)), [signals, trending]);
-  const rankedSignals = useMemo(() => rankSignals(allSignals, profile), [allSignals, profile]);
-  const latestSignals = useMemo(
-    () => [...allSignals].sort((a, b) => new Date(b.published_at ?? b.created_at).getTime() - new Date(a.published_at ?? a.created_at).getTime()),
-    [allSignals],
-  );
-  const trendingSignals = useMemo(
-    () => [...allSignals].sort((a, b) => b.trend_score + b.importance_score - (a.trend_score + a.importance_score)),
-    [allSignals],
-  );
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setProfile((current) => addSearch(current, deferredQuery));
+      if (deferredQuery.trim().length > 1) {
+        void trackInteraction({
+          email: profile.email,
+          signal_id: 0,
+          action: "search",
+          query: deferredQuery.trim(),
+        });
+      }
+    }, 600);
+    return () => clearTimeout(handle);
+  }, [deferredQuery, profile.email]);
 
-  const tabSignals =
-    activeTab === "for-you"
-      ? rankedSignals
-      : activeTab === "trending"
-        ? trendingSignals
-        : activeTab === "latest"
-          ? latestSignals
-          : allSignals.filter((signal) => profile.savedIds.includes(signal.id));
-
-  const filteredSignals = useMemo(() => {
-    const search = deferredQuery.trim().toLowerCase();
-    if (!search) {
-      return tabSignals;
+  const allSignals = useMemo(() => dedupeSignals([...signals, ...trending.flatMap((group) => group.signals)]), [signals, trending]);
+  const tabSignals = useMemo(() => {
+    if (activeTab === "trending") {
+      return sortTrending(allSignals);
     }
-    return tabSignals.filter((signal) =>
-      [signal.raw_title, signal.summary?.headline, signal.summary?.what_happened, signal.category, signal.source, ...signal.tags]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(search),
-    );
-  }, [deferredQuery, tabSignals]);
+    if (activeTab === "latest") {
+      return sortLatest(allSignals);
+    }
+    if (activeTab === "saved") {
+      return savedSignals(allSignals, profile);
+    }
+    return rankRecommendations(allSignals, profile);
+  }, [activeTab, allSignals, profile]);
+  const filteredSignals = useMemo(() => filterSignals(tabSignals, deferredQuery), [tabSignals, deferredQuery]);
 
   function pushToast(message: string, tone: Toast["tone"] = "success") {
     const id = Date.now();
@@ -165,19 +149,16 @@ export function NewsFeed({
     });
   }
 
-  function record(signal: Signal, action: "like" | "save" | "click") {
-    setProfile((current) => {
-      const topicWeights = { ...current.topicWeights };
-      for (const topic of signalTopics(signal)) {
-        topicWeights[topic] = (topicWeights[topic] ?? 0) + (action === "click" ? 1 : 2);
-      }
-      return {
-        ...current,
-        likedIds: action === "like" ? toggleId(current.likedIds, signal.id) : current.likedIds,
-        savedIds: action === "save" ? toggleId(current.savedIds, signal.id) : current.savedIds,
-        clickedIds: action === "click" ? unique([...current.clickedIds, signal.id]).slice(-80) : current.clickedIds,
-        topicWeights,
-      };
+  function record(signal: Signal, action: "like" | "save" | "click" | "share") {
+    const readingSeconds = action === "click" ? Math.max(15, Math.round((signal.summary?.what_happened.length ?? 180) / 14)) : 0;
+    setProfile((current) => recordBehavior(current, signal, action, readingSeconds));
+    void trackInteraction({
+      email: profile.email,
+      signal_id: signal.id,
+      action,
+      category: signal.category,
+      topics: signalTopics(signal).slice(0, 12),
+      reading_seconds: readingSeconds,
     });
   }
 
@@ -186,7 +167,7 @@ export function NewsFeed({
       try {
         const fresh = await getSignals(profile.email);
         setSignals(fresh);
-        setVisibleCount(9);
+        setVisibleCount(10);
         pushToast("Feed refreshed.");
       } catch {
         pushToast("Could not refresh. Showing cached signals.", "error");
@@ -195,32 +176,34 @@ export function NewsFeed({
   }
 
   return (
-    <main className="min-h-screen bg-ink text-text">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-ink/85 backdrop-blur-xl">
+    <main className={`min-h-screen ${theme === "dark" ? "bg-ink text-text" : "bg-[#F7F8FB] text-[#111827]"}`}>
+      <header className={`sticky top-0 z-40 border-b backdrop-blur-xl ${theme === "dark" ? "border-white/10 bg-ink/86" : "border-black/10 bg-white/88"}`}>
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 md:px-8 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-accent text-ink">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold leading-tight md:text-xl">AI Opportunity Radar</h1>
-              <p className="text-xs text-muted md:text-sm">Personalized AI news, ranked by opportunity.</p>
-            </div>
-          </div>
+          <BrandHeader />
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <label className="relative min-w-0 sm:w-72">
+            <label className="relative min-w-0 sm:w-80">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                className="h-11 w-full rounded-lg border border-line bg-panel/80 pl-10 pr-4 text-sm text-text outline-none transition focus:border-accent"
+                className={`h-11 w-full rounded-lg border pl-10 pr-4 text-sm outline-none transition focus:border-accent ${
+                  theme === "dark" ? "border-line bg-panel/80 text-text" : "border-black/10 bg-white text-[#111827]"
+                }`}
                 placeholder="Search AI agents, SaaS, funding..."
               />
             </label>
             <button
+              onClick={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-panel/80 text-muted transition hover:border-accent/50 hover:text-text"
+              aria-label="Toggle color theme"
+              title="Toggle color theme"
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+            <button
               onClick={refreshFeed}
               disabled={isPending}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-line bg-panel px-4 text-sm font-semibold transition hover:border-accent/50 disabled:opacity-60"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-line bg-panel px-4 text-sm font-semibold text-text transition hover:border-accent/50 disabled:opacity-60"
             >
               <RefreshCw className={`h-4 w-4 ${isPending ? "animate-spin" : ""}`} />
               Refresh
@@ -230,63 +213,10 @@ export function NewsFeed({
       </header>
 
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 md:px-8 lg:grid-cols-[17rem_1fr]">
-        <aside className="lg:sticky lg:top-24 lg:h-[calc(100vh-7rem)]">
-          <div className="space-y-4 rounded-lg border border-line bg-panel/80 p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <UserRound className="h-4 w-4 text-accent" />
-              Your Signals
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(profile.interests.length ? profile.interests : ["AI Tools", "Startups", "Automation"]).map((interest) => (
-                <span key={interest} className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs text-accent">
-                  {interest}
-                </span>
-              ))}
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <Stat label="Saved" value={profile.savedIds.length} />
-              <Stat label="Liked" value={profile.likedIds.length} />
-              <Stat label="Read" value={profile.clickedIds.length} />
-            </div>
-            <button
-              onClick={() => setProfile((current) => ({ ...current, onboarded: false }))}
-              className="w-full rounded-lg border border-line px-3 py-2 text-sm text-muted transition hover:border-accent/50 hover:text-text"
-            >
-              Tune interests
-            </button>
-          </div>
-          <div className="mt-4 rounded-lg border border-line bg-panel/70 p-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted">Weekly brief</p>
-            <h2 className="mt-3 text-base font-semibold">{weeklyReport.headline}</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">{weeklyReport.executive_summary}</p>
-          </div>
-        </aside>
+        <RadarSidebar profile={profile} weeklyReport={weeklyReport} onTune={() => setProfile((current) => ({ ...current, onboarded: false }))} />
 
         <section>
-          <div className="mb-5 overflow-x-auto">
-            <div className="flex min-w-max gap-2">
-              {[
-                ["for-you", "For You"],
-                ["trending", "Trending"],
-                ["latest", "Latest"],
-                ["saved", "Saved"],
-              ].map(([id, label]) => (
-                <button
-                  key={id}
-                  onClick={() => {
-                    setActiveTab(id as FeedTab);
-                    setVisibleCount(9);
-                  }}
-                  className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                    activeTab === id ? "bg-accent text-ink" : "border border-line bg-panel/70 text-muted hover:text-text"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
+          <FeedTabs activeTab={activeTab} onChange={(tab) => { setActiveTab(tab); setVisibleCount(10); }} />
           {isPending && signals.length === 0 ? <SkeletonGrid /> : null}
           {filteredSignals.length > 0 ? (
             <>
@@ -302,6 +232,7 @@ export function NewsFeed({
                     onSave={() => record(signal, "save")}
                     onOpen={() => record(signal, "click")}
                     onShare={() => {
+                      record(signal, "share");
                       void shareSignal(signal, pushToast);
                     }}
                   />
@@ -310,8 +241,8 @@ export function NewsFeed({
               {visibleCount < filteredSignals.length ? (
                 <div className="mt-6 flex justify-center">
                   <button
-                    onClick={() => setVisibleCount((count) => count + 6)}
-                    className="rounded-lg border border-line bg-panel px-5 py-3 text-sm font-semibold transition hover:border-accent/50"
+                    onClick={() => setVisibleCount((count) => count + 8)}
+                    className="rounded-lg border border-line bg-panel px-5 py-3 text-sm font-semibold text-text transition hover:border-accent/50"
                   >
                     Load more signals
                   </button>
@@ -325,19 +256,81 @@ export function NewsFeed({
       </div>
 
       {!profile.onboarded ? <Onboarding initial={profile.interests} pending={isPending} onSave={saveOnboarding} /> : null}
-      <div className="fixed bottom-4 right-4 z-50 space-y-2">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`rounded-lg border px-4 py-3 text-sm shadow-glow ${
-              toast.tone === "error" ? "border-accentWarm/40 bg-[#2A2114] text-accentWarm" : "border-accent/30 bg-[#10261E] text-accent"
+      <ToastStack toasts={toasts} />
+    </main>
+  );
+}
+
+function BrandHeader() {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-accent text-ink">
+        <Sparkles className="h-5 w-5" />
+      </div>
+      <div>
+        <h1 className="text-lg font-semibold leading-tight md:text-xl">AI Opportunity Radar</h1>
+        <p className="text-xs text-muted md:text-sm">Personalized AI news, ranked by opportunity.</p>
+      </div>
+    </div>
+  );
+}
+
+function RadarSidebar({ profile, weeklyReport, onTune }: { profile: RadarProfile; weeklyReport: WeeklyReport; onTune: () => void }) {
+  return (
+    <aside className="lg:sticky lg:top-24 lg:h-[calc(100vh-7rem)]">
+      <div className="space-y-4 rounded-lg border border-line bg-panel/80 p-4 shadow-glow">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <UserRound className="h-4 w-4 text-accent" />
+          Your Signals
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(profile.interests.length ? profile.interests : ["AI Tools", "Startups", "Automation"]).map((interest) => (
+            <span key={interest} className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs text-accent">
+              {interest}
+            </span>
+          ))}
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <Stat label="Saved" value={profile.savedIds.length} />
+          <Stat label="Liked" value={profile.likedIds.length} />
+          <Stat label="Read" value={profile.clickedIds.length} />
+        </div>
+        <button onClick={onTune} className="w-full rounded-lg border border-line px-3 py-2 text-sm text-muted transition hover:border-accent/50 hover:text-text">
+          Tune interests
+        </button>
+      </div>
+      <div className="mt-4 rounded-lg border border-line bg-panel/70 p-4">
+        <p className="text-xs uppercase tracking-[0.18em] text-muted">Weekly brief</p>
+        <h2 className="mt-3 text-base font-semibold">{weeklyReport.headline}</h2>
+        <p className="mt-2 text-sm leading-6 text-muted">{weeklyReport.executive_summary}</p>
+      </div>
+    </aside>
+  );
+}
+
+function FeedTabs({ activeTab, onChange }: { activeTab: FeedTab; onChange: (tab: FeedTab) => void }) {
+  const tabs: [FeedTab, string][] = [
+    ["for-you", "For You"],
+    ["trending", "Trending"],
+    ["latest", "Latest"],
+    ["saved", "Saved"],
+  ];
+  return (
+    <div className="mb-5 overflow-x-auto">
+      <div className="flex min-w-max gap-2">
+        {tabs.map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => onChange(id)}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+              activeTab === id ? "bg-accent text-ink" : "border border-line bg-panel/70 text-muted hover:text-text"
             }`}
           >
-            {toast.message}
-          </div>
+            {label}
+          </button>
         ))}
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -360,20 +353,12 @@ function NewsCard({
   onShare: () => void;
   onOpen: () => void;
 }) {
-  const [imageSrc, setImageSrc] = useState(signal.image_url || fallbackImage(signal.category));
+  const quality = scoreNews(signal);
   const headline = signal.summary?.headline || signal.raw_title;
   return (
     <article className="group overflow-hidden rounded-lg border border-line bg-panelSoft shadow-glow transition duration-200 hover:-translate-y-0.5 hover:border-accent/40">
-      <div className="relative aspect-[16/9] overflow-hidden bg-panel">
-        <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-line via-panelSoft to-ink" />
-        <img
-          src={imageSrc}
-          alt={signal.image_alt || headline}
-          loading={priority ? "eager" : "lazy"}
-          decoding="async"
-          onError={() => setImageSrc(fallbackImage(signal.category))}
-          className="relative h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-        />
+      <div className="relative">
+        <NewsImage src={signal.image_url} category={signal.category} alt={signal.image_alt || headline} priority={priority} />
         <div className="absolute left-3 top-3 rounded-full bg-ink/80 px-3 py-1 text-xs font-semibold text-accent backdrop-blur">
           {signal.category}
         </div>
@@ -387,14 +372,14 @@ function NewsCard({
           </span>
           <span className="inline-flex items-center gap-1">
             <Flame className="h-3.5 w-3.5 text-accentWarm" />
-            Trend {signal.trend_score}
+            Trend {quality.trendScore}
           </span>
         </div>
         <h2 className="text-xl font-semibold leading-tight">{headline}</h2>
-        <p className="mt-3 text-sm leading-6 text-muted">{signal.summary?.what_happened || "Summary is being prepared for this signal."}</p>
+        <p className="mt-3 text-sm leading-6 text-muted">{quality.aiSummary}</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <InfoBlock label="Why it matters" value={signal.summary?.why_it_matters || "This signal is fresh, relevant, and worth tracking."} />
-          <InfoBlock label="Opportunity" value={`${signal.opportunity_score}/10 potential`} />
+          <InfoBlock label="Why it matters" value={quality.whyItMatters} />
+          <InfoBlock label="Opportunity" value={`${quality.opportunityScore}/10 potential`} />
         </div>
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex gap-2">
@@ -427,11 +412,11 @@ function NewsCard({
 function Onboarding({ initial, pending, onSave }: { initial: string[]; pending: boolean; onSave: (interests: string[]) => void }) {
   const [selected, setSelected] = useState(initial.length ? initial : ["AI Tools", "Startups", "Automation"]);
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/80 px-4 backdrop-blur">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/82 px-4 backdrop-blur">
       <section className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-line bg-panel p-6 shadow-glow">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold">What are you interested in?</h2>
+            <h2 className="text-2xl font-semibold">What topics interest you?</h2>
             <p className="mt-2 text-sm leading-6 text-muted">Pick a few themes and the feed will adapt as you read, like, and save.</p>
           </div>
           <button onClick={() => onSave(selected)} className="rounded-lg border border-line p-2 text-muted hover:text-text" aria-label="Close onboarding">
@@ -531,82 +516,21 @@ function EmptyState({ tab, query }: { tab: FeedTab; query: string }) {
   );
 }
 
-function rankSignals(signals: Signal[], profile: RadarProfile) {
-  const interests = profile.interests.map(normalize);
-  return [...signals].sort((a, b) => scoreSignal(b, interests, profile) - scoreSignal(a, interests, profile));
-}
-
-function scoreSignal(signal: Signal, interests: string[], profile: RadarProfile) {
-  const topics = signalTopics(signal);
-  const interestMatch = topics.some((topic) => interests.some((interest) => topic.includes(interest) || interest.includes(topic))) ? 30 : 0;
-  const clicked = profile.clickedIds.includes(signal.id) ? 12 : 0;
-  const likedTopics = topics.reduce((sum, topic) => sum + (profile.topicWeights[topic] ?? 0), 0);
-  const freshness = Math.max(0, 20 - ageHours(signal.published_at || signal.created_at) / 3);
-  const engagement = signal.importance_score * 0.2 + signal.opportunity_score * 2 + signal.trend_score * 0.15;
-  return interestMatch + clicked + likedTopics + freshness + engagement;
-}
-
-function signalTopics(signal: Signal) {
-  return unique([signal.category, ...signal.tags, ...(signal.summary?.headline ?? "").split(" ")]
-    .map(normalize)
-    .filter((topic) => topic.length > 2));
-}
-
-function dedupeSignals(...groups: Signal[][]) {
-  const seen = new Set<string>();
-  const output: Signal[] = [];
-  for (const signal of groups.flat()) {
-    const key = `${normalize(signal.raw_title)}-${signal.link}`;
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    output.push(signal);
-  }
-  return output;
-}
-
-function loadProfile(): RadarProfile {
-  if (typeof window === "undefined") {
-    return DEFAULT_PROFILE;
-  }
-  try {
-    const value = localStorage.getItem(STORAGE_KEY);
-    return value ? { ...DEFAULT_PROFILE, ...JSON.parse(value) } : DEFAULT_PROFILE;
-  } catch {
-    return DEFAULT_PROFILE;
-  }
-}
-
-function fallbackImage(category: string) {
-  return CATEGORY_IMAGES[normalize(category)] || "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1200&q=80";
-}
-
-function relativeTime(value: string) {
-  const hours = ageHours(value);
-  if (hours < 1) {
-    return "Just now";
-  }
-  if (hours < 24) {
-    return `${Math.round(hours)}h ago`;
-  }
-  return `${Math.round(hours / 24)}d ago`;
-}
-
-function ageHours(value: string) {
-  return Math.max((Date.now() - new Date(value).getTime()) / 36e5, 0);
-}
-
-function normalize(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-}
-
-function unique<T>(items: T[]) {
-  return Array.from(new Set(items));
-}
-
-function toggleId(ids: number[], id: number) {
-  return ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id];
+function ToastStack({ toasts }: { toasts: Toast[] }) {
+  return (
+    <div className="fixed bottom-4 right-4 z-50 space-y-2">
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          className={`rounded-lg border px-4 py-3 text-sm shadow-glow ${
+            toast.tone === "error" ? "border-accentWarm/40 bg-[#2A2114] text-accentWarm" : "border-accent/30 bg-[#10261E] text-accent"
+          }`}
+        >
+          {toast.message}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 async function shareSignal(signal: Signal, pushToast: (message: string, tone?: Toast["tone"]) => void) {
@@ -621,4 +545,15 @@ async function shareSignal(signal: Signal, pushToast: (message: string, tone?: T
   } catch {
     pushToast("Share cancelled.", "error");
   }
+}
+
+function relativeTime(value: string) {
+  const hours = Math.max((Date.now() - new Date(value).getTime()) / 36e5, 0);
+  if (hours < 1) {
+    return "Just now";
+  }
+  if (hours < 24) {
+    return `${Math.round(hours)}h ago`;
+  }
+  return `${Math.round(hours / 24)}d ago`;
 }

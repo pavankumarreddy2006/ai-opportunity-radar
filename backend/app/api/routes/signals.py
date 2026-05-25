@@ -4,32 +4,11 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.signal import SignalResponse
-from app.services.image_service import category_fallback_image, first_payload_image
 from app.services.interest_service import InterestService
 from app.services.ranking_service import RankingService
+from app.services.signal_serializer import to_signal_response
 
 router = APIRouter()
-
-
-def _to_signal_response(signal) -> SignalResponse:
-    image_url = first_payload_image(signal.raw_news.raw_payload) or category_fallback_image(signal.category)
-    return SignalResponse(
-        id=signal.id,
-        category=signal.category,
-        importance_score=signal.importance_score,
-        opportunity_score=signal.opportunity_score,
-        trend_score=round(signal.trend_velocity * 100),
-        action_recommendation=signal.action_recommendation,
-        created_at=signal.created_at,
-        raw_title=signal.raw_news.title,
-        source=signal.raw_news.source,
-        link=signal.raw_news.link,
-        tags=signal.raw_news.tags,
-        published_at=signal.raw_news.published_at,
-        image_url=image_url,
-        image_alt=f"{signal.category} news image for {signal.raw_news.title}",
-        summary=signal.summary,
-    )
 
 
 @router.get("", response_model=list[SignalResponse])
@@ -40,7 +19,7 @@ def get_signals(email: str | None = None, limit: int = 5, db: Session = Depends(
         if not signals:
             from app.services.fallback_data import fallback_signals
             return fallback_signals(limit)
-        return [_to_signal_response(signal) for signal in signals]
+        return [to_signal_response(signal) for signal in signals]
     except Exception as exc:
         from app.services.fallback_data import fallback_signals
         return fallback_signals(limit)

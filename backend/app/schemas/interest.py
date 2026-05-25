@@ -13,9 +13,18 @@ class PreferenceUpdateRequest(BaseModel):
     interests: list[str]
 
 
+class InteractionTrackRequest(BaseModel):
+    email: str
+    signal_id: int
+    action: str
+    category: str | None = None
+    topics: list[str] = []
+    query: str | None = None
+    reading_seconds: int = 0
+
+
 class PreferenceResponse(ORMBase):
     id: int
     email: str
     name: str | None
     interests: list[InterestItem]
-

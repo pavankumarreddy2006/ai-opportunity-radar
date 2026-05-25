@@ -5,49 +5,45 @@ const rawApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:
 const API_BASE_URL = rawApiBaseUrl.startsWith("http") ? rawApiBaseUrl : `https://${rawApiBaseUrl}`;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
-  try {
-    let response: Response | null = null;
-    let lastError: unknown = null;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      try {
-        response = await fetch(`${API_BASE_URL}${path}`, {
-          ...init,
-          headers: {
-            "Content-Type": "application/json",
-            ...(init?.headers ?? {}),
-          },
-          signal: controller.signal,
-          next: { revalidate: init?.method && init.method !== "GET" ? 0 : 180 },
-        });
-        if (response.ok || response.status < 500) {
-          break;
+  let lastError: unknown = null;
+  const attempts = init?.method && init.method !== "GET" ? 1 : 3;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    try {
+      const response = await fetch(`${API_BASE_URL}${path}`, {
+        ...init,
+        headers: {
+          "Content-Type": "application/json",
+          ...(init?.headers ?? {}),
+        },
+        signal: controller.signal,
+        next: { revalidate: init?.method && init.method !== "GET" ? 0 : 120 },
+      });
+
+      if (!response.ok) {
+        lastError = new Error(`API request failed with status ${response.status}`);
+        if (response.status >= 500 && attempt < attempts - 1) {
+          await delay(350 * (attempt + 1));
+          continue;
         }
-      } catch (error) {
-        lastError = error;
-        if (attempt === 1) {
-          throw error;
-        }
+        throw lastError;
       }
-    }
 
-    if (!response) {
-      throw lastError instanceof Error ? lastError : new Error("API request failed");
+      return parseJson<T>(response);
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts - 1) {
+        await delay(350 * (attempt + 1));
+        continue;
+      }
+    } finally {
+      clearTimeout(timeout);
     }
-
-    if (!response.ok) {
-      console.error(`API request failed with status ${response.status} for path: ${path}`);
-      throw new Error(`API request failed with status ${response.status}`);
-    }
-
-    return response.json() as Promise<T>;
-  } catch (error) {
-    console.error(`API request error for ${path}:`, error);
-    throw error;
-  } finally {
-    clearTimeout(timeout);
   }
+
+  throw lastError instanceof Error ? lastError : new Error("API request failed");
 }
 
 export async function getSignals(email?: string): Promise<Signal[]> {
@@ -115,7 +111,41 @@ export async function savePreferences(payload: {
       body: JSON.stringify(payload),
     });
   } catch (error) {
-    console.error("Failed to save preferences:", error);
     throw new Error("Failed to save preferences. Please try again.");
   }
+}
+
+export async function trackInteraction(payload: {
+  email: string;
+  signal_id: number;
+  action: "click" | "save" | "like" | "view" | "share" | "search";
+  category?: string;
+  topics?: string[];
+  query?: string;
+  reading_seconds?: number;
+}): Promise<{ status: string }> {
+  try {
+    return await request<{ status: string }>("/preferences/interaction", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { status: "local-only" };
+  }
+}
+
+async function parseJson<T>(response: Response): Promise<T> {
+  const text = await response.text();
+  if (!text) {
+    return null as T;
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch (error) {
+    throw new Error(`Invalid JSON response: ${error instanceof Error ? error.message : "parse failed"}`);
+  }
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
