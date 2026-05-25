@@ -42,6 +42,13 @@ class RssScraper(BaseScraper):
                         continue
                     tags = [label]
                     tags.extend([tag.term.lower() for tag in getattr(entry, "tags", [])[:4]])
+                    image_url = None
+                    media_thumbnail = getattr(entry, "media_thumbnail", None)
+                    media_content = getattr(entry, "media_content", None)
+                    if media_thumbnail and isinstance(media_thumbnail, list):
+                        image_url = media_thumbnail[0].get("url")
+                    if not image_url and media_content and isinstance(media_content, list):
+                        image_url = media_content[0].get("url")
                     items.append(
                         ScrapedItem(
                             title=title,
@@ -51,7 +58,7 @@ class RssScraper(BaseScraper):
                             engagement_score=float(len(getattr(entry, "tags", [])) * 5),
                             tags=tags,
                             summary_snippet=getattr(entry, "summary", "")[:280] or None,
-                            raw_payload={"feed": label},
+                            raw_payload={"feed": label, "image_url": image_url},
                             credibility_score=0.82,
                             mention_count=max(1, len(tags) - 1),
                         )

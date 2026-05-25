@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.models.raw_news import RawNews
 from app.scraper.base import ScrapedItem
 from app.scraper.utils import build_dedupe_key, normalize_url, tokenize
+from app.services.image_service import fetch_og_image, first_payload_image
 
 
 def _title_similarity(left: str, right: str) -> float:
@@ -42,6 +43,12 @@ class DedupeService:
                     changed_ids.add(existing.id)
                 continue
 
+            raw_payload = dict(item.raw_payload or {})
+            if not first_payload_image(raw_payload):
+                image_url = fetch_og_image(item.link)
+                if image_url:
+                    raw_payload["image_url"] = image_url
+
             model = RawNews(
                 source=item.source,
                 title=item.title,
@@ -50,7 +57,7 @@ class DedupeService:
                 engagement_score=item.engagement_score,
                 tags=item.tags,
                 summary_snippet=item.summary_snippet,
-                raw_payload=item.raw_payload,
+                raw_payload=raw_payload,
                 dedupe_key=dedupe_key,
                 credibility_score=item.credibility_score,
                 mention_count=item.mention_count,
@@ -70,8 +77,12 @@ class DedupeService:
         existing.engagement_score = max(existing.engagement_score, item.engagement_score)
         existing.credibility_score = max(existing.credibility_score, item.credibility_score)
         existing.tags = sorted(set([*existing.tags, *item.tags]))
+        image_url = item.raw_payload.get("image_url") or first_payload_image(existing.raw_payload)
+        if not image_url:
+            image_url = fetch_og_image(item.link)
         existing.raw_payload = {
             **(existing.raw_payload or {}),
+            **({"image_url": image_url} if image_url else {}),
             "merged_sources": sorted(
                 set(
                     [

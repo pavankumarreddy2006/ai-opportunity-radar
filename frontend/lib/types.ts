@@ -12,6 +12,7 @@ export type Signal = {
   category: string;
   importance_score: number;
   opportunity_score: number;
+  trend_score: number;
   action_recommendation: string | null;
   created_at: string;
   raw_title: string;
@@ -19,6 +20,8 @@ export type Signal = {
   link: string;
   tags: string[];
   published_at: string | null;
+  image_url: string | null;
+  image_alt: string | null;
   summary: SummaryPayload | null;
 };
 

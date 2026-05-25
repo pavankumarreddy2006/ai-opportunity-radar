@@ -61,14 +61,14 @@ class SummarizationService:
         return self._fallback_summary(signal)
 
     def _ask_model(self, client: OpenAI, model: str, user_prompt: dict, signal: Signal) -> dict:
-        response = client.responses.create(
+        response = client.chat.completions.create(
             model=model,
-            input=[
+            messages=[
                 {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
                 {"role": "user", "content": json.dumps(user_prompt)},
             ],
         )
-        text = response.output_text
+        text = response.choices[0].message.content
         return self._normalize_payload(self._parse_json(text), signal)
 
     def _parse_json(self, text: str) -> dict:

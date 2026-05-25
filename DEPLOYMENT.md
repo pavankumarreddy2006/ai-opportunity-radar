@@ -4,6 +4,8 @@
 
 The app is prepared for GitHub and Render Blueprint deployment.
 
+Important: the public URL `https://ai-opportunity-radar.onrender.com/` currently responds with the older FastAPI/Jinja shell. The upgraded production UI lives in the `frontend` Next.js app, so the Render service using that URL must be configured from the `ai-opportunity-radar` node service in `render.yaml`, not from the backend root.
+
 Validated locally:
 
 - Backend smoke tests pass.
@@ -52,6 +54,17 @@ The Blueprint creates:
 - `ai-opportunity-radar`
 - `ai-opportunity-radar-hourly-refresh`
 - `ai-opportunity-radar-db`
+
+If `ai-opportunity-radar` already exists as a Python/FastAPI service in Render, either:
+
+- update that service to use `rootDir: frontend`, runtime `node`, build command `npm ci && npm run build`, and start command `npm start`, or
+- delete/rename the old backend service before applying the Blueprint so the frontend can own `https://ai-opportunity-radar.onrender.com`.
+
+The backend API should be the separate Python service:
+
+```text
+https://ai-opportunity-radar-api.onrender.com
+```
 
 ## Required Secrets
 

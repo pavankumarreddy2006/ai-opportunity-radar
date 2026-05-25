@@ -38,6 +38,13 @@ class TechBlogScraper(BaseScraper):
                     link = getattr(entry, "link", "")
                     if not title or not link:
                         continue
+                    image_url = None
+                    media_thumbnail = getattr(entry, "media_thumbnail", None)
+                    media_content = getattr(entry, "media_content", None)
+                    if media_thumbnail and isinstance(media_thumbnail, list):
+                        image_url = media_thumbnail[0].get("url")
+                    if not image_url and media_content and isinstance(media_content, list):
+                        image_url = media_content[0].get("url")
                     items.append(
                         ScrapedItem(
                             title=title,
@@ -47,7 +54,7 @@ class TechBlogScraper(BaseScraper):
                             engagement_score=12.0,
                             tags=[label, "tech-blog"],
                             summary_snippet=getattr(entry, "summary", "")[:280] or None,
-                            raw_payload={"feed": label},
+                            raw_payload={"feed": label, "image_url": image_url},
                             credibility_score=0.84,
                             mention_count=1,
                         )

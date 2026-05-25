@@ -19,6 +19,7 @@ class SignalResponse(ORMBase):
     category: str
     importance_score: int
     opportunity_score: int
+    trend_score: int
     action_recommendation: str | None
     created_at: datetime
     raw_title: str
@@ -26,6 +27,8 @@ class SignalResponse(ORMBase):
     link: str
     tags: list[str]
     published_at: datetime | None
+    image_url: str | None = None
+    image_alt: str | None = None
     summary: SummaryPayload | None
 
 
